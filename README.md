@@ -82,18 +82,21 @@ One of the benefits of using Dragonfly as a cache is its measurably lower memory
  | Million Values of Length | 10002.75GB | 3.17GB15 | 
  | Million Values of Length | 2003.8GB | 4.6GB |
 
-After conducting the experiment, we’ve observed that Dragonfly’s memory usage is up to 20% lower compared to Redis under similar conditions. This allows you to store significantly more useful data with the same memory requirements, making the cache more efficient and achieving higher coverage. You can read more about Dragonfly throughput benchmarks and memory usage in the Redis vs. Dragonfly Scalability and Performance blog post.
-Snapshotting
+After conducting the experiment, we’ve observed that Dragonfly’s memory usage is up to 20% lower compared to Redis under similar conditions. This allows you to store significantly more useful data with the same memory requirements, making the cache more efficient and achieving higher coverage. You can read more about Dragonfly throughput benchmarks and memory usage in the [Redis vs. Dragonfly Scalability and Performance blog post](https://www.dragonflydb.io/blog/scaling-performance-redis-vs-dragonfly).
+
+## Snapshotting
 
 Beyond just lower memory usage, Dragonfly also demonstrates remarkable stability during snapshotting processes. Snapshotting, particularly in busy instances, can be a challenge in terms of memory management. With Redis, capturing a snapshot on a highly active instance might lead to increased memory usage. This happens because Redis needs to copy memory pages, even those that have only been partially overwritten, resulting in a spike in memory usage.
 
 Dragonfly, in contrast, takes a more adaptive approach to snapshotting. It intelligently adjusts the order of snapshotting based on incoming requests, effectively preventing any unexpected surges in memory usage. This means that even during intensive operations like snapshotting, Dragonfly maintains a stable memory footprint, ensuring consistent performance without the risk of sudden memory spikes. You can read more about the Dragonfly snapshotting algorithm in the Balanced vs. Unbalanced blog post.
-Key Stickiness
+
+## Key Stickiness
 
 Dragonfly also introduces a new feature with its custom STICK command. This command is particularly useful in instances running in cache mode. It enables specific keys to be marked as non-evicting, irrespective of their access frequency.
 
 This functionality is especially handy for storing seldom-accessed yet important data. For example, you can reliably keep auxiliary information, like dynamic configuration values, directly on your Dragonfly instance. This eliminates the need for a separate datastore for infrequently used but crucial data, streamlining your data management process.
 
+```
 // Storing a value in the Dragonfly instance with stickiness.
 Redis::transaction(function (Redis $redis) {
     $redis->set('server-dynamic-configuration-key', '...');
@@ -102,15 +105,18 @@ Redis::transaction(function (Redis $redis) {
 
 // ...// Will always return a value since the key cannot be evicted.
 $redis->get('server-dynamic-configuration-key');
+```
 
-Enhanced Throughput in Queue Management
+## Enhanced Throughput in Queue Management
 
 Dragonfly, much like Redis, is adept at managing queues and jobs. As you might have already guessed, the transition to using Dragonfly for this purpose is seamless, requiring no code modifications. Consider the following example in Laravel, where a podcast processing job is dispatched:
 
+```
 use App\Jobs\ProcessPodcast;
 
 $podcast = Podcast::create(/* ... */);
 ProcessPodcast::dispatchSync($podcast);
+```
 
 Both Dragonfly and Redis are capable of handling tens of thousands of jobs per second with ease.
 
@@ -120,11 +126,15 @@ However, a common challenge arises when keys from the same queue end up on diffe
 
 As a quick example, to optimize your queue management with Dragonfly, start by launching Dragonfly with specific flags that enable hashtag-based locking and emulated cluster mode:
 
+```
 ./dragonfly --lock_on_hashtags --cluster_mode=emulated
+```
 
 Once Dragonfly is running with these settings, incorporate hashtags into your queue names in Laravel. Here’s an example:
 
+```
 ProcessPodcast::dispatch($podcast)->onQueue('{podcast_queue}');
+```
 
 By using hashtags in queue names, you ensure that all messages belonging to the same queue are processed by the same thread in Dragonfly. This approach not only keeps related messages together, enhancing efficiency, but also allows Dragonfly to maximize throughput by distributing different queues across multiple threads.
 
